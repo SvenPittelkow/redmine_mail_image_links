@@ -1,0 +1,4 @@
+de:
+  mail_image_links_default_link_text: "[Bild öffnen]"
+  label_mail_image_links_link_text: "Linktext"
+  text_mail_image_links_link_text_info: "Text, der in Benachrichtigungs-Mails anstelle jedes Bildes angezeigt wird. Leer lassen, um den Standardtext in der Standardsprache dieses Redmine zu verwenden."

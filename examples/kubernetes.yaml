@@ -1,0 +1,31 @@
+# Excerpt of a Redmine Deployment: loads the plugin through an init container,
+# without building a custom image. Pin the tag (--branch) for reproducible rollouts.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redmine
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: fetch-mail-image-links
+          image: alpine/git:latest
+          args:
+            - clone
+            - --depth=1
+            - --branch=v1.0.0
+            - https://github.com/GITHUB_OWNER/redmine_mail_image_links.git
+            - /plugin
+          volumeMounts:
+            - name: plugin-mail-image-links
+              mountPath: /plugin
+      containers:
+        - name: redmine
+          image: redmine:7
+          volumeMounts:
+            - name: plugin-mail-image-links
+              mountPath: /usr/src/redmine/plugins/redmine_mail_image_links
+              readOnly: true
+      volumes:
+        - name: plugin-mail-image-links
+          emptyDir: {}

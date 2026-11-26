@@ -1,0 +1,4 @@
+en:
+  mail_image_links_default_link_text: "[Open image]"
+  label_mail_image_links_link_text: "Link text"
+  text_mail_image_links_link_text_info: "Text shown in notification emails instead of each image. Leave empty to use the default text in the default language of this Redmine."

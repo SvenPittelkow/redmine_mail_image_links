@@ -1,0 +1,7 @@
+<p>
+  <label for="settings_link_text"><%= l(:label_mail_image_links_link_text) %></label>
+  <%= text_field_tag 'settings[link_text]', @settings['link_text'],
+                     id: 'settings_link_text', size: 30,
+                     placeholder: l(:mail_image_links_default_link_text) %>
+  <em class="info"><%= l(:text_mail_image_links_link_text_info) %></em>
+</p>
