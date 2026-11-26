@@ -8,11 +8,14 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
   include Redmine::I18n
 
   IMAGE_URL = 'https://images.example.com/screenshot.png'
+  # Markdown (CommonMark) image, the default text formatting since Redmine 6
+  IMAGE = "![screenshot](#{IMAGE_URL})"
 
   def setup
     ActionMailer::Base.deliveries.clear
     Setting.plain_text_mail = '0'
     Setting.default_language = 'en'
+    Setting.text_formatting = 'common_mark'
     User.current = nil
   end
 
@@ -27,7 +30,7 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
   end
 
   def test_inline_image_is_replaced_with_link
-    issue = Issue.generate!(description: "Screenshot:\n\n!#{IMAGE_URL}!")
+    issue = Issue.generate!(description: "Screenshot:\n\n#{IMAGE}")
     assert Mailer.deliver_issue_add(issue)
 
     html = html_of(last_email)
@@ -35,8 +38,19 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
     assert_includes html, %(<a href="#{IMAGE_URL}">[Open image]</a>)
   end
 
+  def test_textile_image_is_replaced_with_link
+    with_settings text_formatting: 'textile' do
+      issue = Issue.generate!(description: "Screenshot:\n\n!#{IMAGE_URL}!")
+      assert Mailer.deliver_issue_add(issue)
+    end
+
+    html = html_of(last_email)
+    assert_no_match(/<img/i, html)
+    assert_includes html, %(<a href="#{IMAGE_URL}">[Open image]</a>)
+  end
+
   def test_text_part_is_not_changed
-    issue = Issue.generate!(description: "!#{IMAGE_URL}!")
+    issue = Issue.generate!(description: IMAGE)
     assert Mailer.deliver_issue_add(issue)
 
     assert_includes last_email.text_part.decoded, IMAGE_URL
@@ -59,7 +73,7 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
 
   def test_link_text_from_plugin_setting
     with_settings plugin_redmine_mail_image_links: { 'link_text' => '[Bild öffnen]' } do
-      issue = Issue.generate!(description: "!#{IMAGE_URL}!")
+      issue = Issue.generate!(description: IMAGE)
       assert Mailer.deliver_issue_add(issue)
     end
 
@@ -68,7 +82,7 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
 
   def test_default_link_text_follows_default_language
     with_settings default_language: 'de' do
-      issue = Issue.generate!(description: "!#{IMAGE_URL}!")
+      issue = Issue.generate!(description: IMAGE)
       assert Mailer.deliver_issue_add(issue)
     end
 
@@ -76,7 +90,7 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
   end
 
   def test_encoded_mail_round_trips
-    issue = Issue.generate!(description: "Größe ändern: !#{IMAGE_URL}!")
+    issue = Issue.generate!(description: "Größe ändern: #{IMAGE}")
     assert Mailer.deliver_issue_add(issue)
 
     reparsed = Mail.new(last_email.encoded)
@@ -88,7 +102,7 @@ class MailerWithImageLinksTest < ActiveSupport::TestCase
 
   def test_plain_text_mail_setting_still_works
     with_settings plain_text_mail: '1' do
-      issue = Issue.generate!(description: "!#{IMAGE_URL}!")
+      issue = Issue.generate!(description: IMAGE)
       assert Mailer.deliver_issue_add(issue)
     end
 
