@@ -1,0 +1,79 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly run to notice breakage caused by new Redmine stable releases
+    - cron: '17 4 * * 1'
+
+jobs:
+  filter:
+    name: HTML filter (standalone)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+      - run: gem install minitest
+      - run: STANDALONE=1 ruby -Itest test/unit/html_filter_test.rb
+
+  redmine:
+    name: Redmine ${{ matrix.redmine }} / Ruby ${{ matrix.ruby }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - redmine: '6.0-stable'
+            ruby: '3.3'
+          - redmine: '6.1-stable'
+            ruby: '3.4'
+          - redmine: '7.0-stable'
+            ruby: '3.4'
+          - redmine: 'master'
+            ruby: '3.4'
+    continue-on-error: ${{ matrix.redmine == 'master' }}
+    env:
+      RAILS_ENV: test
+    defaults:
+      run:
+        working-directory: redmine
+
+    steps:
+      - name: Checkout Redmine
+        uses: actions/checkout@v4
+        with:
+          repository: redmine/redmine
+          ref: ${{ matrix.redmine }}
+          path: redmine
+
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+        with:
+          path: redmine/plugins/redmine_mail_image_links
+
+      - name: Configure SQLite database
+        run: |
+          cat > config/database.yml <<EOF
+          test:
+            adapter: sqlite3
+            database: db/test.sqlite3
+          EOF
+
+      - name: Install Ruby and gems
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: redmine
+
+      - name: Prepare database
+        run: bundle exec rake db:create db:migrate redmine:plugins:migrate
+
+      - name: Check autoloading (Zeitwerk)
+        run: bundle exec rails zeitwerk:check
+
+      - name: Run plugin tests
+        run: bundle exec rake redmine:plugins:test NAME=redmine_mail_image_links
